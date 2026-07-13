@@ -1,5 +1,5 @@
 import argparse
-import pandas as pd
+
 from data_handler import fetch_historical_data, backdate_one_day
 from technical_strategy import compute_indicators, generate_technical_signals
 from deep_learning import (
@@ -27,6 +27,7 @@ def main():
     # Fetch data
     print(f"Fetching data for {symbol} from {start_date} to {end_date}...")
     df = fetch_historical_data(symbol, start_date, end_date)
+    print(f"Data source: {df.attrs.get('source', 'unknown')} - {df.attrs.get('source_note', '')}")
 
     if df.empty:
         print("No data fetched. Please check symbol or date range.")
@@ -37,13 +38,11 @@ def main():
         print("Preparing data for LSTM training...")
         X_seq, y_seq, mean_p, std_p = prepare_sequences(df)
         train_size = int(0.8 * len(X_seq))
-        X_train, X_test = X_seq[:train_size], X_seq[train_size:]
-        y_train, y_test = y_seq[:train_size], y_seq[train_size:]
-
-#        print(f"X_train shape: {X_train.shape}, y_train shape: {y_train.shape}")
+        X_train = X_seq[:train_size]
+        y_train = y_seq[:train_size]
 
         print("Training LSTM model...")
-        model = train_lstm_model(X_train, y_train, epochs=2)  # short epochs for demo
+        model = train_lstm_model(X_train, y_train, epochs=3, hidden_size=32)
 
         print("Generating deep learning signals...")
         df_dl = generate_deep_learning_signals(df, model, sequence_length=60, mean_p=mean_p, std_p=std_p)
@@ -62,9 +61,9 @@ def main():
         # Perform backtest on historical data
         print("Running backtest...")
         final_val, portfolio_df = backtest(signals, prices, initial_capital=10000.0)
-        print(f"Backtest completed. Final Portfolio Value = ${float(final_val.iloc[0]):.2f}")
-        # Could do more analysis here: e.g. show total return, etc.
-        total_return = ((final_val - 10000)/10000 * 100).iloc[0]
+        print(f"Backtest completed over {len(portfolio_df)} rows.")
+        print(f"Final Portfolio Value = ${final_val:,.2f}")
+        total_return = ((final_val - 10000)/10000 * 100)
         print(f"Total Return: {total_return:.2f}%")
 
     else:
@@ -97,15 +96,18 @@ def main():
         today_price = today['Close']
 
         final_cash, profit = simulate_paper_trade(strategy_signal, yesterday_price, today_price)
-        yesterday_price = float(yesterday_price.iloc[0])  # Extract float from Series
-        today_price = float(today_price.iloc[0])  # Extract float from Series
-        #final_cash = float(final_cash.iloc[0])  # Extract float from Series
-        #profit = float(profit.iloc[0])  # Extract float from Series
+        if hasattr(yesterday_price, "iloc"):
+            yesterday_price = float(yesterday_price.iloc[0])
+        else:
+            yesterday_price = float(yesterday_price)
+        if hasattr(today_price, "iloc"):
+            today_price = float(today_price.iloc[0])
+        else:
+            today_price = float(today_price)
 
         print(f"Yesterday's Signal = {strategy_signal}, Yesterday Price = {yesterday_price:.2f}, Today Price = {today_price:.2f}")
         print(f"Paper Trade result: Final Cash = ${final_cash:.2f}, Profit = ${profit:.2f}")
 
 if __name__ == "__main__":
     main()
-
 
