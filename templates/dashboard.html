@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}{{ result.ticker }} Dashboard - DeepTradeAlgo{% endblock %}
+
+{% block content %}
+<section class="result-header">
+    <div>
+        <p class="eyebrow">{{ result.strategy_label }}</p>
+        <h1>{{ result.ticker }} analysis</h1>
+        <p class="result-meta">{{ result.date_range }} · {{ result.rows }} market rows · {{ result.source_label }}</p>
+    </div>
+    <div class="signal-card {{ result.signal_tone }}">
+        <span>Latest signal</span>
+        <strong>{{ result.signal_label }}</strong>
+    </div>
+</section>
+
+<section class="metric-grid">
+    <article class="metric-card">
+        <span>Last close</span>
+        <strong>{{ result.last_close }}</strong>
+        <small>{{ result.price_change }} from first row</small>
+    </article>
+    <article class="metric-card">
+        <span>Backtest value</span>
+        <strong>{{ result.final_value }}</strong>
+        <small>{{ result.total_return }} total return</small>
+    </article>
+    <article class="metric-card">
+        <span>Signals</span>
+        <strong>{{ result.buy_count }} buy / {{ result.sell_count }} sell</strong>
+        <small>{{ result.portfolio_rows }} portfolio observations</small>
+    </article>
+    <article class="metric-card source-card">
+        <span>Data source</span>
+        <strong>{{ result.source_label }}</strong>
+        <small>{{ result.source_note }}</small>
+    </article>
+</section>
+
+<section class="dashboard-grid">
+    <div class="panel chart-panel">
+        {{ result.plot_div|safe }}
+    </div>
+
+    <aside class="panel activity-panel">
+        <div class="panel-heading">
+            <p class="eyebrow">Recent rows</p>
+            <h2>Signal tape</h2>
+        </div>
+        <div class="activity-list">
+            {% for row in result.activity %}
+                <div class="activity-row">
+                    <span>{{ row.date }}</span>
+                    <strong>{{ row.close }}</strong>
+                    <em class="{{ row.tone }}">{{ row.signal }}</em>
+                </div>
+            {% endfor %}
+        </div>
+        <a class="secondary-button" href="{{ url_for('dashboard') }}">Run another analysis</a>
+    </aside>
+</section>
+{% endblock %}

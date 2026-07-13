@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}Realtime Quote - DeepTradeAlgo{% endblock %}
+
+{% block content %}
+<section class="quote-layout">
+    <form class="panel quote-form" action="{{ url_for('realtime') }}" method="get">
+        <div class="panel-heading">
+            <p class="eyebrow">Quote</p>
+            <h1>Latest market snapshot</h1>
+        </div>
+        <label for="ticker">Ticker</label>
+        <input type="text" id="ticker" name="ticker" value="{{ ticker }}" maxlength="12" autocomplete="off" required>
+        <button type="submit" class="primary-button">Refresh quote</button>
+    </form>
+
+    {% if quote %}
+        <section class="quote-card">
+            <div>
+                <p class="eyebrow">{{ quote.source }}</p>
+                <h2>{{ quote.ticker }}</h2>
+                <strong>{{ "$%.2f"|format(quote.price) }}</strong>
+            </div>
+            <dl>
+                <div><dt>Open</dt><dd>{{ "$%.2f"|format(quote.open) }}</dd></div>
+                <div><dt>High</dt><dd>{{ "$%.2f"|format(quote.high) }}</dd></div>
+                <div><dt>Low</dt><dd>{{ "$%.2f"|format(quote.low) }}</dd></div>
+                <div><dt>Volume</dt><dd>{{ "{:,}".format(quote.volume) }}</dd></div>
+            </dl>
+            {% if quote.note %}
+                <p class="source-note">{{ quote.note }}</p>
+            {% endif %}
+        </section>
+    {% endif %}
+</section>
+{% endblock %}

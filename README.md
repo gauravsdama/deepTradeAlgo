@@ -1,42 +1,69 @@
-How It Works
+# DeepTradeAlgo
 
-    Command-Line Arguments:
-        --symbol: Stock ticker (default: AAPL).
-        --start_date/--end_date: Date range for historical data.
-        --strategy: Either "technical" or "deep_learning".
-        --mode: "backtest" or "paper".
+DeepTradeAlgo is a Flask dashboard and CLI for experimenting with stock signals. It supports a technical-indicator strategy and a compact PyTorch LSTM strategy, then visualizes recommendations, recent signal activity, and simple long-only backtest results.
 
-    Fetching Data: Uses fetch_historical_data from data_handler.py.
+This project is an educational demo. It is not financial advice.
 
-    Strategy Selection:
-        If strategy == "deep_learning", we:
-            Prepare sequences (prepare_sequences).
-            Split into train/test sets.
-            Train an LSTM (train_lstm_model).
-            Generate signals for each day using the trained model (generate_deep_learning_signals).
-        Otherwise (technical), we:
-            Compute indicators (compute_indicators).
-            Generate signals (generate_technical_signals).
+## Highlights
 
-    Mode Selection:
-        If mode == "backtest", we run backtest on the generated signals for the entire historical DataFrame. It then prints out final portfolio value and total return.
-        If mode == "paper", we call backdate_one_day to split the last two rows as “yesterday” and “today,” and we:
-            Extract the “yesterday’s signal.”
-            Simulate a single-day trade using simulate_paper_trade.
-            Print out how much profit/loss we would have made had we followed the strategy from last close to today’s close.
+- Flask dashboard with responsive Plotly charts
+- Technical strategy using MA50/MA200, RSI, and MACD signals
+- LSTM strategy for short-horizon demo forecasts
+- JSON prediction endpoint and quote endpoint
+- Deterministic demo-data fallback when Yahoo Finance is unavailable or rate-limited
+- Unit tests that run without live market access
 
-command line arguments :
-Argument Description Example
---symbol Stock ticker symbol --symbol AAPL
---start_date Start date for fetching data --start_date 2024-01-01
---end_date End date for fetching data --end_date 2025-01-01
---strategy Choose strategy: "technical" or "deep_learning" --strategy technical
---mode Choose mode: "backtest" or "paper" --mode backtest
+## Quick Start
 
-Example : python main.py --symbol AAPL --start_date 2024-01-01 --end_date 2025-01-01 --strategy technical --mode backtest
-This will:
+```bash
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+python app.py
+```
 
-    Fetch historical data for AAPL from 2024-01-01 to 2025-01-01.
-    Apply technical indicators (RSI, MACD, Moving Averages).
-    Backtest the strategy on past data.
-    Print the final portfolio value and total return
+Open `http://127.0.0.1:5000`.
+
+## CLI Demo
+
+```bash
+python main.py --symbol AAPL --start_date 2023-01-01 --end_date 2025-01-01 --strategy technical --mode backtest
+python main.py --symbol MSFT --start_date 2023-01-01 --end_date 2025-01-01 --strategy deep_learning --mode backtest
+```
+
+## API Examples
+
+```bash
+curl "http://127.0.0.1:5000/predict?ticker=AAPL&start_date=2023-01-01&end_date=2025-01-01&strategy=technical"
+curl "http://127.0.0.1:5000/realtime?ticker=AAPL&format=json"
+```
+
+## Demo Data Fallback
+
+Yahoo Finance can rate-limit local and CI environments. By default, `fetch_historical_data` falls back to deterministic generated OHLCV data and labels the source as `demo` in the UI/API.
+
+Disable fallback when you want strict live data behavior:
+
+```bash
+DEEPTRADE_DEMO_FALLBACK=0 python app.py
+```
+
+## Tests
+
+```bash
+python -m unittest discover -s tests
+```
+
+## Project Structure
+
+```text
+app.py                  Flask dashboard and API routes
+main.py                 CLI entry point
+data_handler.py         yfinance access and deterministic demo data
+technical_strategy.py   indicator and technical signal logic
+deep_learning.py        PyTorch LSTM strategy helpers
+trading_simulator.py    simple long-only backtester
+templates/              Jinja templates
+static/styles.css       dashboard styling
+tests/                  offline-safe unit tests
+```

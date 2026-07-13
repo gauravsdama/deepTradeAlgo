@@ -1,73 +1,79 @@
+"""Backtesting helpers for generated trading signals."""
+
+from __future__ import annotations
+
 import pandas as pd
 
-def backtest(signals, prices, initial_capital=10000.0):
+
+def _as_float(value) -> float:
+    if isinstance(value, pd.Series):
+        value = value.iloc[0]
+    if hasattr(value, "item"):
+        value = value.item()
+    return float(value)
+
+
+def backtest(signals: pd.Series, prices: pd.Series, initial_capital: float = 10000.0):
     """
-    Simple backtest on a single stock with buy/sell signals.
-    signals: a pandas Series of {1,0,-1} (buy, hold, sell)
-    prices: a pandas Series with the same index as signals
-    Returns final portfolio value and a DataFrame of daily portfolio values.
+    Run a simple long-only backtest using buy/sell/hold signals.
+
+    Returns:
+        final_value: float
+        portfolio_df: DataFrame with one PortfolioValue row per input date.
     """
 
-    if not (len(signals) == len(prices)):
+    signals, prices = signals.align(prices, join="inner")
+    if len(signals) != len(prices):
         raise ValueError("Signals and prices must have the same length/index.")
+    if signals.empty:
+        raise ValueError("At least one signal is required.")
 
-    cash = initial_capital
+    cash = float(initial_capital)
     shares = 0
     portfolio_values = []
-    
-    for i in range(len(signals)):
-        signal = signals.iloc[i]
-        price = prices.iloc[i]
 
-        # Buy signal
+    for date in signals.index:
+        signal = int(_as_float(signals.loc[date]))
+        price = _as_float(prices.loc[date])
+        if price <= 0:
+            portfolio_values.append(cash)
+            continue
+
         if signal == 1 and shares == 0:
-            shares_to_buy = int(cash // float(price.iloc[0]))
-            if shares_to_buy > 0:
-                shares = shares_to_buy
-                cash -= shares * price
-
-        # Sell signal
+            shares = int(cash // price)
+            cash -= shares * price
         elif signal == -1 and shares > 0:
             cash += shares * price
             shares = 0
-        
-        portfolio_value = cash + shares * price
-        portfolio_values.append(portfolio_value)
 
-    # If still holding at the end, let's assume we exit
+        portfolio_values.append(cash + shares * price)
+
     if shares > 0:
-        cash += shares * prices.iloc[-1]
+        cash += shares * _as_float(prices.iloc[-1])
         shares = 0
+        portfolio_values[-1] = cash
 
-    final_value = cash
-    portfolio_df = pd.DataFrame({
-        'PortfolioValue': portfolio_values
-    }, index=signals.index)
-
-    return final_value, portfolio_df
+    portfolio_df = pd.DataFrame({"PortfolioValue": portfolio_values}, index=signals.index)
+    return float(cash), portfolio_df
 
 
-def simulate_paper_trade(strategy_signal, yesterday_price, today_price, initial_capital=10000.0):
+def simulate_paper_trade(strategy_signal, yesterday_price, today_price, initial_capital: float = 10000.0):
     """
-    Simulate a one-day 'paper trade' based on yesterday's signal and today's price outcome.
+    Simulate a one-day paper trade based on yesterday's signal and today's close.
     """
-    cash = initial_capital
+
+    cash = float(initial_capital)
     shares = 0
+    yesterday = _as_float(yesterday_price)
+    today = _as_float(today_price)
+    signal = int(_as_float(strategy_signal))
 
-    # If yesterday's signal was buy, buy at yesterday_price
-    if strategy_signal == 1:
-        shares_to_buy = int(cash // yesterday_price)
-        shares = shares_to_buy
-        cash -= shares * yesterday_price
-    
-    # If the signal was sell, we do nothing if we have no shares.
-    # If we had shares from before (not tracked here), that would be scenario-based, but let's keep simple.
+    if signal == 1 and yesterday > 0:
+        shares = int(cash // yesterday)
+        cash -= shares * yesterday
 
-    # Evaluate what happened by the end of 'today'
-    # Sell at today's price to see result
     if shares > 0:
-        cash += shares * today_price
-        shares = 0
+        cash += shares * today
 
     profit = cash - initial_capital
-    return cash, profit
+    return float(cash), float(profit)
