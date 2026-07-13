@@ -282,7 +282,23 @@ def home():
 @app.route("/dashboard", methods=["GET", "POST"])
 def dashboard():
     if request.method == "GET":
-        return render_template("dashboard_form.html", values=_form_values(request.args), strategies=STRATEGIES)
+        values = _form_values(request.args)
+        if request.args.get("run"):
+            try:
+                ticker, start_date, end_date, strategy, forecast_days = _parse_inputs(request.args)
+                result = run_analysis(ticker, start_date, end_date, strategy, forecast_days)
+            except Exception as exc:
+                return (
+                    render_template(
+                        "dashboard_form.html",
+                        values=values,
+                        strategies=STRATEGIES,
+                        error=str(exc),
+                    ),
+                    400,
+                )
+            return render_template("dashboard.html", result=result, values=values, strategies=STRATEGIES)
+        return render_template("dashboard_form.html", values=values, strategies=STRATEGIES)
 
     values = _form_values(request.form)
     try:

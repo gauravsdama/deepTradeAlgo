@@ -62,8 +62,8 @@
         <button type="submit" class="primary-button">Run analysis</button>
 
         <div class="quick-links" aria-label="Quick demo links">
-            <a href="{{ url_for('dashboard', ticker='AAPL', strategy='technical') }}">AAPL technical</a>
-            <a href="{{ url_for('dashboard', ticker='MSFT', strategy='deep_learning') }}">MSFT LSTM</a>
+            <a href="{{ url_for('dashboard', ticker='AAPL', strategy='technical', run=1) }}">AAPL technical</a>
+            <a href="{{ url_for('dashboard', ticker='MSFT', strategy='deep_learning', run=1) }}">MSFT LSTM</a>
         </div>
     </form>
 </section>
