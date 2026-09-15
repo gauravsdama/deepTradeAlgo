@@ -40,8 +40,8 @@ def compute_indicators(df: pd.DataFrame) -> pd.DataFrame:
 
     output[["MA50", "MA200", "MACD", "MACD_signal"]] = output[
         ["MA50", "MA200", "MACD", "MACD_signal"]
-    ].ffill().bfill()
-    return output.dropna(subset=["Close"])
+    ].ffill()
+    return output.dropna(subset=["Close", "MA50", "MA200"])
 
 
 def generate_technical_signals(df: pd.DataFrame) -> pd.DataFrame:

@@ -30,7 +30,11 @@ def _close_values(df: pd.DataFrame) -> np.ndarray:
     return pd.to_numeric(close, errors="coerce").dropna().to_numpy(dtype=float)
 
 
-def prepare_sequences(df: pd.DataFrame, sequence_length: int = 60):
+def prepare_sequences(
+    df: pd.DataFrame,
+    sequence_length: int = 60,
+    fit_rows: int | None = None,
+):
     """
     Create normalized close-price sequences for LSTM training.
     """
@@ -39,8 +43,13 @@ def prepare_sequences(df: pd.DataFrame, sequence_length: int = 60):
     if len(prices) <= sequence_length:
         raise ValueError(f"Need more than {sequence_length} price rows for deep learning.")
 
-    mean_p = float(prices.mean())
-    std_p = float(prices.std())
+    fit_rows = len(prices) if fit_rows is None else int(fit_rows)
+    if not sequence_length < fit_rows <= len(prices):
+        raise ValueError("Training rows must exceed the sequence length and fit the dataset.")
+
+    training_prices = prices[:fit_rows]
+    mean_p = float(training_prices.mean())
+    std_p = float(training_prices.std())
     if std_p == 0:
         raise ValueError("Price series has no variance.")
 
@@ -114,20 +123,20 @@ def generate_deep_learning_signals(
     prices = _close_values(output)
 
     model.eval()
-    for i in range(sequence_length, len(output)):
-        seq = prices[i - sequence_length : i]
+    for decision_index in range(sequence_length - 1, len(output) - 1):
+        seq = prices[decision_index - sequence_length + 1 : decision_index + 1]
         seq_norm = (seq - mean_p) / std_p
         X_seq = torch.from_numpy(seq_norm).float().unsqueeze(0).unsqueeze(-1)
 
         with torch.no_grad():
             pred_norm = model(X_seq).item()
         pred_price = (pred_norm * std_p) + mean_p
-        current_price = float(prices[i])
+        current_price = float(prices[decision_index])
 
         if pred_price > current_price * (1 + threshold):
-            output.at[output.index[i], "Signal_DL"] = 1
+            output.at[output.index[decision_index], "Signal_DL"] = 1
         elif pred_price < current_price * (1 - threshold):
-            output.at[output.index[i], "Signal_DL"] = -1
+            output.at[output.index[decision_index], "Signal_DL"] = -1
 
     return output
 

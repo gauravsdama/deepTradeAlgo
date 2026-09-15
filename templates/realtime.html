@@ -11,6 +11,7 @@
         </div>
         <label for="ticker">Ticker</label>
         <input type="text" id="ticker" name="ticker" value="{{ ticker }}" maxlength="12" autocomplete="off" required>
+        {% if error %}<div class="alert" role="alert">{{ error }}</div>{% endif %}
         <button type="submit" class="primary-button">Refresh quote</button>
     </form>
 

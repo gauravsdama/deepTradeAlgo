@@ -5,13 +5,12 @@ from __future__ import annotations
 import hashlib
 import io
 import os
+from collections.abc import Iterable
 from contextlib import redirect_stderr, redirect_stdout
-from typing import Iterable
 
 import numpy as np
 import pandas as pd
 import yfinance as yf
-
 
 PRICE_COLUMNS = ["Open", "High", "Low", "Close", "Adj Close", "Volume"]
 
@@ -33,8 +32,7 @@ def _flatten_yfinance_columns(df: pd.DataFrame) -> pd.DataFrame:
             return flattened
 
     flattened.columns = [
-        "_".join(str(part) for part in column if str(part))
-        for column in df.columns.to_flat_index()
+        "_".join(str(part) for part in column if str(part)) for column in df.columns.to_flat_index()
     ]
     return flattened
 
@@ -109,11 +107,15 @@ def generate_demo_data(symbol: str, start_date: str, end_date: str) -> pd.DataFr
     )
     df.index.name = "Date"
     df.attrs["source"] = "demo"
-    df.attrs["source_note"] = "Deterministic demo data generated because live market data was unavailable."
+    df.attrs["source_note"] = (
+        "Deterministic demo data generated because live market data was unavailable."
+    )
     return df
 
 
-def fetch_historical_data(symbol: str, start_date: str, end_date: str, interval: str = "1d") -> pd.DataFrame:
+def fetch_historical_data(
+    symbol: str, start_date: str, end_date: str, interval: str = "1d"
+) -> pd.DataFrame:
     """Fetch historical market data with a disclosed demo-data fallback."""
 
     clean_symbol = (symbol or "").strip().upper()

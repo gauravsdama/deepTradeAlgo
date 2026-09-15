@@ -1,0 +1,33 @@
+[project]
+name = "deeptradealgo"
+version = "0.2.0"
+description = "Educational stock-signal and backtesting workbench"
+readme = "README.md"
+requires-python = ">=3.11,<3.14"
+license = "Apache-2.0"
+dependencies = [
+  "flask>=3.1,<4",
+  "numpy>=1.26,<3",
+  "pandas>=2.2,<3",
+  "plotly>=6,<7",
+  "torch>=2.2,<3",
+  "yfinance>=0.2.52,<0.3",
+]
+
+[dependency-groups]
+dev = [
+  "pip-audit>=2.9.0",
+  "pytest>=9.0.3",
+  "ruff>=0.13.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]

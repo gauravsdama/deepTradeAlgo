@@ -2,6 +2,10 @@
 
 {% block title %}{{ result.ticker }} Dashboard - DeepTradeAlgo{% endblock %}
 
+{% block head %}
+<script src="{{ url_for('static', filename='vendor/plotly.min.js') }}"></script>
+{% endblock %}
+
 {% block content %}
 <section class="result-header">
     <div>
@@ -24,7 +28,7 @@
     <article class="metric-card">
         <span>Backtest value</span>
         <strong>{{ result.final_value }}</strong>
-        <small>{{ result.total_return }} total return</small>
+        <small>{{ result.total_return }} total return · buy-and-hold {{ result.benchmark_return }}</small>
     </article>
     <article class="metric-card">
         <span>Signals</span>
@@ -37,6 +41,8 @@
         <small>{{ result.source_note }}</small>
     </article>
 </section>
+
+<p class="source-note">{{ result.execution_note }} Educational simulation only; past results do not predict future performance.</p>
 
 <section class="dashboard-grid">
     <div class="panel chart-panel">

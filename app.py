@@ -17,8 +17,7 @@ from deep_learning import (
 )
 from realtime_data import fetch_realtime_data
 from technical_strategy import compute_indicators, generate_technical_signals
-from trading_simulator import backtest
-
+from trading_simulator import backtest, buy_and_hold_value
 
 app = Flask(__name__)
 
@@ -31,6 +30,10 @@ SIGNAL_LABELS = {
     0: ("Hold", "neutral"),
     -1: ("Sell", "negative"),
 }
+MAX_HISTORY_DAYS = 365 * 5 + 2
+MAX_FORECAST_DAYS = 10
+FEE_BPS = 5.0
+SLIPPAGE_BPS = 5.0
 
 
 def _default_dates():
@@ -66,12 +69,21 @@ def _parse_inputs(source):
     end_date = dt.datetime.strptime(values["end_date"], "%Y-%m-%d").date()
     if end_date <= start_date:
         raise ValueError("End date must be after start date.")
+    if end_date > dt.date.today():
+        raise ValueError("End date cannot be in the future.")
+    if (end_date - start_date).days > MAX_HISTORY_DAYS:
+        raise ValueError("Choose a date range of five years or less.")
 
     strategy = values["strategy"]
     if strategy not in STRATEGIES:
         raise ValueError("Choose a supported strategy.")
 
-    forecast_days = max(1, min(int(values.get("forecast_days") or 5), 20))
+    try:
+        forecast_days = int(values.get("forecast_days") or 5)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("Forecast days must be a whole number.") from exc
+    if not 1 <= forecast_days <= MAX_FORECAST_DAYS:
+        raise ValueError(f"Forecast days must be between 1 and {MAX_FORECAST_DAYS}.")
     return ticker, start_date.isoformat(), end_date.isoformat(), strategy, forecast_days
 
 
@@ -110,7 +122,9 @@ def _activity_rows(df: pd.DataFrame, signal_col: str):
     return rows
 
 
-def _build_chart(ticker: str, strategy: str, history: pd.DataFrame, combined: pd.DataFrame, signal_col: str):
+def _build_chart(
+    ticker: str, strategy: str, history: pd.DataFrame, combined: pd.DataFrame, signal_col: str
+):
     fig = go.Figure()
 
     fig.add_trace(
@@ -194,7 +208,11 @@ def _build_chart(ticker: str, strategy: str, history: pd.DataFrame, combined: pd
         plot_bgcolor="#ffffff",
         hovermode="x unified",
         legend={"orientation": "h", "y": 1.08, "x": 1, "xanchor": "right"},
-        font={"family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif"},
+        font={
+            "family": (
+                "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif"
+            )
+        },
     )
     fig.update_xaxes(showgrid=True, gridcolor="#e5e7eb", zeroline=False)
     fig.update_yaxes(showgrid=True, gridcolor="#eef2f7", zeroline=False, tickprefix="$")
@@ -202,12 +220,14 @@ def _build_chart(ticker: str, strategy: str, history: pd.DataFrame, combined: pd
     return plot(
         fig,
         output_type="div",
-        include_plotlyjs="cdn",
+        include_plotlyjs=False,
         config={"displayModeBar": False, "responsive": True},
     )
 
 
-def run_analysis(ticker: str, start_date: str, end_date: str, strategy: str, forecast_days: int = 5):
+def run_analysis(
+    ticker: str, start_date: str, end_date: str, strategy: str, forecast_days: int = 5
+):
     df = fetch_historical_data(ticker, start_date, end_date)
     if df.empty:
         raise ValueError("No data was available for that ticker and date range.")
@@ -216,16 +236,37 @@ def run_analysis(ticker: str, start_date: str, end_date: str, strategy: str, for
     source_note = df.attrs.get("source_note", "Market data source was not provided.")
 
     if strategy == "deep_learning":
-        X_seq, y_seq, mean_p, std_p = prepare_sequences(df)
-        model = train_lstm_model(X_seq, y_seq, epochs=3, hidden_size=32)
-        history = generate_deep_learning_signals(df, model, sequence_length=60, mean_p=mean_p, std_p=std_p)
+        sequence_length = 60
+        if len(df) < 140:
+            raise ValueError("The LSTM demo needs at least 140 market rows.")
+        train_end = int(len(df) * 0.7)
+        X_seq, y_seq, mean_p, std_p = prepare_sequences(
+            df,
+            sequence_length=sequence_length,
+            fit_rows=train_end,
+        )
+        training_sequence_count = train_end - sequence_length
+        model = train_lstm_model(
+            X_seq[:training_sequence_count],
+            y_seq[:training_sequence_count],
+            epochs=3,
+            hidden_size=32,
+        )
+        full_history = generate_deep_learning_signals(
+            df,
+            model,
+            sequence_length=sequence_length,
+            mean_p=mean_p,
+            std_p=std_p,
+        )
+        history = full_history.iloc[train_end - 1 :].copy()
         future = forecast_future_prices(
-            history,
+            full_history,
             model,
             mean_p,
             std_p,
             forecast_days=forecast_days,
-            sequence_length=60,
+            sequence_length=sequence_length,
             threshold=0.01,
         )
         if not future.empty:
@@ -241,8 +282,21 @@ def run_analysis(ticker: str, start_date: str, end_date: str, strategy: str, for
     if history.empty:
         raise ValueError("Not enough clean rows were available after indicator calculation.")
 
-    final_value, portfolio_df = backtest(history[signal_col], history["Close"], initial_capital=10000.0)
+    final_value, portfolio_df = backtest(
+        history[signal_col],
+        history["Open"],
+        initial_capital=10000.0,
+        fee_bps=FEE_BPS,
+        slippage_bps=SLIPPAGE_BPS,
+    )
     total_return = ((final_value - 10000.0) / 10000.0) * 100
+    benchmark_value = buy_and_hold_value(
+        history["Open"],
+        initial_capital=10000.0,
+        fee_bps=FEE_BPS,
+        slippage_bps=SLIPPAGE_BPS,
+    )
+    benchmark_return = ((benchmark_value - 10000.0) / 10000.0) * 100
 
     latest_signal = int(combined[signal_col].dropna().iloc[-1])
     signal_label, signal_tone = _signal(latest_signal)
@@ -266,6 +320,12 @@ def run_analysis(ticker: str, start_date: str, end_date: str, strategy: str, for
         "price_change": _fmt_pct(price_change),
         "final_value": _fmt_money(final_value),
         "total_return": _fmt_pct(total_return),
+        "benchmark_value": _fmt_money(benchmark_value),
+        "benchmark_return": _fmt_pct(benchmark_return),
+        "execution_note": (
+            "Signals trade at the next market row's open; 5 bps fees and "
+            "5 bps slippage are applied per side."
+        ),
         "buy_count": int((history[signal_col] == 1).sum()),
         "sell_count": int((history[signal_col] == -1).sum()),
         "activity": _activity_rows(history, signal_col),
@@ -282,13 +342,15 @@ def home():
 @app.route("/dashboard", methods=["GET", "POST"])
 def dashboard():
     if request.method == "GET":
-        return render_template("dashboard_form.html", values=_form_values(request.args), strategies=STRATEGIES)
+        return render_template(
+            "dashboard_form.html", values=_form_values(request.args), strategies=STRATEGIES
+        )
 
     values = _form_values(request.form)
     try:
         ticker, start_date, end_date, strategy, forecast_days = _parse_inputs(request.form)
         result = run_analysis(ticker, start_date, end_date, strategy, forecast_days)
-    except Exception as exc:
+    except ValueError as exc:
         return (
             render_template(
                 "dashboard_form.html",
@@ -297,6 +359,20 @@ def dashboard():
                 error=str(exc),
             ),
             400,
+        )
+    except Exception:
+        app.logger.exception("Dashboard analysis failed")
+        return (
+            render_template(
+                "dashboard_form.html",
+                values=values,
+                strategies=STRATEGIES,
+                error=(
+                    "Analysis could not be completed. Try a shorter range or "
+                    "the technical strategy."
+                ),
+            ),
+            500,
         )
 
     return render_template("dashboard.html", result=result, values=values, strategies=STRATEGIES)
@@ -308,8 +384,11 @@ def predict():
     try:
         ticker, start_date, end_date, strategy, forecast_days = _parse_inputs(payload)
         result = run_analysis(ticker, start_date, end_date, strategy, forecast_days)
-    except Exception as exc:
+    except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
+    except Exception:
+        app.logger.exception("Prediction API analysis failed")
+        return jsonify({"error": "Analysis could not be completed."}), 500
 
     return jsonify(
         {
@@ -319,6 +398,8 @@ def predict():
             "recommendation": result["signal_label"],
             "last_close": result["last_close"],
             "total_return": result["total_return"],
+            "benchmark_return": result["benchmark_return"],
+            "execution_note": result["execution_note"],
             "data_source": result["source"],
             "message": "Educational demo only. Not investment advice.",
         }
@@ -327,7 +408,16 @@ def predict():
 
 @app.route("/realtime", methods=["GET"])
 def realtime():
-    ticker = (request.args.get("ticker") or "AAPL").upper()
+    ticker = (request.args.get("ticker") or "AAPL").strip().upper()
+    if not re.fullmatch(r"[A-Z0-9.\-]{1,12}", ticker):
+        if request.args.get("format") == "json":
+            return jsonify({"error": "Use a valid ticker symbol."}), 400
+        return render_template(
+            "realtime.html",
+            quote=None,
+            ticker=ticker,
+            error="Use a valid ticker symbol.",
+        ), 400
     quote = fetch_realtime_data(ticker)
     if request.args.get("format") == "json":
         if quote is None:
@@ -342,4 +432,4 @@ def healthz():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=False)
