@@ -2,7 +2,7 @@
 
 Checkpoint: 2026-09-15
 
-Status: **open-source release; static demo pending deployment verification**.
+Status: **published and verified**.
 
 ## Release boundary
 
@@ -41,3 +41,4 @@ Completed successfully in this checkout on 2026-09-15:
 - `uv run python scripts/export_static_analyses.py --check` — five saved analyses are current
 - `uv run pip-audit` — no known vulnerabilities
 - Browser checks — technical and chronological LSTM flows rendered complete results with the local Plotly asset and no console warnings or errors
+- Public Pages check — all five saved analyses loaded at `https://gauravsdama.github.io/deepTradeAlgo/`; switching analyses updated the chart and metrics with no console warnings or errors
