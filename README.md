@@ -4,6 +4,8 @@ DeepTradeAlgo is a Flask dashboard and CLI for studying stock-signal pipelines. 
 
 This is an educational simulator, not financial advice or evidence of a profitable strategy. It never connects to a brokerage or places trades.
 
+[Open the five-analysis static demo](https://gauravsdama.github.io/deepTradeAlgo/). It uses fixed generated data and does not run Python or fetch live quotes.
+
 ## Highlights
 
 - Flask dashboard with responsive Plotly charts
@@ -14,6 +16,7 @@ This is an educational simulator, not financial advice or evidence of a profitab
 - JSON prediction endpoint and quote endpoint
 - Deterministic demo-data fallback when Yahoo Finance is unavailable or rate-limited
 - Vendored, reproducible Plotly.js runtime with no chart CDN dependency
+- GitHub Pages deck with five deterministic technical-analysis snapshots
 - Unit tests that run without live market access
 
 ## Quick Start
@@ -67,6 +70,8 @@ uv run ruff check .
 uv run pytest
 uv run pip-audit
 ```
+
+Regenerate the Pages snapshots with `uv run python scripts/export_static_analyses.py`.
 
 ## Project Structure
 

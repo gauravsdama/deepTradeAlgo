@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Five saved DeepTradeAlgo technical-analysis snapshots.">
+  <title>DeepTradeAlgo · Five saved analyses</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <main class="shell">
+    <header class="masthead">
+      <a class="brand" href="./" aria-label="DeepTradeAlgo home">
+        <span class="brand-mark" aria-hidden="true">DTA</span>
+        <span>DeepTradeAlgo</span>
+      </a>
+      <span class="mode">Saved analysis deck</span>
+    </header>
+
+    <section class="hero">
+      <div>
+        <p class="kicker">Five fixed paths · one technical rule set</p>
+        <h1>Read the signal, then challenge it.</h1>
+      </div>
+      <p class="hero-copy">Each snapshot uses deterministic generated data, next-session execution, fees, slippage, and the same buy-and-hold comparison. Choose an analysis to inspect the result.</p>
+    </section>
+
+    <section class="analysis-shell" aria-label="Five saved analyses">
+      <nav class="analysis-rail" aria-label="Saved analysis prompts">
+        <div class="rail-heading">
+          <span>Analysis queue</span>
+          <strong>5 saved</strong>
+        </div>
+        <div id="analysis-list">
+          <span class="loading">Loading analyses…</span>
+        </div>
+      </nav>
+
+      <article class="analysis-panel" aria-live="polite">
+        <header class="analysis-header">
+          <div>
+            <span id="analysis-source" class="data-source">—</span>
+            <h2><span id="ticker">—</span> <small id="analysis-title">—</small></h2>
+            <p id="analysis-prompt">Loading saved analysis…</p>
+          </div>
+          <div id="signal" class="signal hold">
+            <span>Latest signal</span>
+            <strong>—</strong>
+          </div>
+        </header>
+
+        <div class="chart-wrap">
+          <svg id="price-chart" viewBox="0 0 800 280" role="img" aria-labelledby="chart-title chart-description">
+            <title id="chart-title">Saved closing-price path</title>
+            <desc id="chart-description">A line chart of deterministic generated closing prices.</desc>
+            <g class="grid-lines" aria-hidden="true"></g>
+            <polyline id="price-line" points=""></polyline>
+          </svg>
+          <div class="chart-range" aria-hidden="true"><span id="period-start">—</span><span id="period-end">—</span></div>
+        </div>
+
+        <dl class="metrics">
+          <div><dt>Last close</dt><dd id="last-close">—</dd><small id="price-change">—</small></div>
+          <div><dt>Strategy return</dt><dd id="strategy-return">—</dd><small>after modeled costs</small></div>
+          <div><dt>Buy-and-hold</dt><dd id="benchmark-return">—</dd><small>same saved path</small></div>
+          <div><dt>Signals</dt><dd id="signal-count">—</dd><small id="row-count">—</small></div>
+        </dl>
+
+        <section class="event-tape" aria-labelledby="event-heading">
+          <div>
+            <span>Recent non-hold signals</span>
+            <h3 id="event-heading">Event tape</h3>
+          </div>
+          <ol id="event-list"></ol>
+        </section>
+      </article>
+    </section>
+
+    <section class="method">
+      <h2>What this page does—and does not do</h2>
+      <p>These are precomputed technical-strategy snapshots, not live quotes. GitHub Pages does not run Flask or train PyTorch models. Run the repository locally for custom tickers and the chronological LSTM demo.</p>
+      <p>Educational simulation only. Generated data is not market history, and historical-style results do not predict future performance.</p>
+      <a href="https://github.com/gauravsdama/deepTradeAlgo">View source and local setup</a>
+    </section>
+  </main>
+</body>
+</html>

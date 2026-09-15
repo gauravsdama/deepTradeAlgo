@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
 import re
 import subprocess
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -45,3 +47,35 @@ def test_tracked_text_has_no_common_secret_shape_or_workspace_path():
                 findings.append(f"secret-like value in {path.relative_to(ROOT)}")
 
     assert findings == []
+
+
+def test_static_analysis_deck_is_current_and_bounded():
+    result = subprocess.run(
+        [sys.executable, "scripts/export_static_analyses.py", "--check"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    payload = json.loads((ROOT / "docs/demo/analyses.json").read_text())
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert len(payload["analyses"]) == 5
+    assert {analysis["ticker"] for analysis in payload["analyses"]} == {
+        "AAPL",
+        "MSFT",
+        "NVDA",
+        "GOOGL",
+        "TSLA",
+    }
+    assert all(len(analysis["series"]) <= 64 for analysis in payload["analyses"])
+
+
+def test_static_demo_has_no_runtime_third_party_assets():
+    html = (ROOT / "docs/demo/index.html").read_text()
+
+    assert 'src="http' not in html
+    assert 'href="http' not in html.replace(
+        'href="https://github.com/gauravsdama/deepTradeAlgo"',
+        "",
+    )
