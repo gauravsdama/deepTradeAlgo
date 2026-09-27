@@ -14,8 +14,9 @@
         <p class="result-meta">{{ result.date_range }} · {{ result.rows }} market rows · {{ result.source_label }}</p>
     </div>
     <div class="signal-card {{ result.signal_tone }}">
-        <span>Latest signal</span>
+        <span>Latest observed-row signal</span>
         <strong>{{ result.signal_label }}</strong>
+        {% if result.forecast_signal_label %}<small>Final forecast row: {{ result.forecast_signal_label }}</small>{% endif %}
     </div>
 </section>
 

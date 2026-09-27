@@ -7,6 +7,17 @@ import pandas as pd
 import torch
 import torch.nn as nn
 
+MAX_EPOCHS = 10
+MAX_HIDDEN_SIZE = 128
+MAX_LAYERS = 2
+MAX_BATCH_SIZE = 256
+TORCH_THREAD_LIMIT = 2
+
+# PyTorch otherwise sizes its CPU pool from the host, which lets a single demo
+# request monopolize a many-core server. The module is lazy-loaded, so this
+# process-wide policy only applies when the LSTM feature is actually used.
+torch.set_num_threads(min(torch.get_num_threads(), TORCH_THREAD_LIMIT))
+
 
 class StockLSTM(nn.Module):
     def __init__(self, input_size: int = 1, hidden_size: int = 50, num_layers: int = 1):
@@ -27,7 +38,10 @@ def _close_values(df: pd.DataFrame) -> np.ndarray:
     close = df["Close"]
     if isinstance(close, pd.DataFrame):
         close = close.iloc[:, 0]
-    return pd.to_numeric(close, errors="coerce").dropna().to_numpy(dtype=float)
+    values = pd.to_numeric(close, errors="coerce").to_numpy(dtype=float)
+    if not np.isfinite(values).all() or (values <= 0).any():
+        raise ValueError("Close prices must be finite and positive.")
+    return values
 
 
 def prepare_sequences(
@@ -72,6 +86,7 @@ def train_lstm_model(
     epochs: int = 5,
     lr: float = 0.001,
     batch_size: int = 32,
+    deadline_monotonic: float | None = None,
 ):
     """
     Train a compact LSTM. Defaults are intentionally small for demo latency.
@@ -79,6 +94,16 @@ def train_lstm_model(
 
     if len(X) == 0:
         raise ValueError("No training sequences were generated.")
+    if not 1 <= epochs <= MAX_EPOCHS:
+        raise ValueError(f"Epochs must be between 1 and {MAX_EPOCHS}.")
+    if not 1 <= hidden_size <= MAX_HIDDEN_SIZE:
+        raise ValueError(f"Hidden size must be between 1 and {MAX_HIDDEN_SIZE}.")
+    if not 1 <= num_layers <= MAX_LAYERS:
+        raise ValueError(f"Layer count must be between 1 and {MAX_LAYERS}.")
+    if not 1 <= batch_size <= MAX_BATCH_SIZE:
+        raise ValueError(f"Batch size must be between 1 and {MAX_BATCH_SIZE}.")
+    if lr <= 0:
+        raise ValueError("Learning rate must be positive.")
 
     torch.manual_seed(7)
     rng = np.random.default_rng(7)
@@ -94,6 +119,11 @@ def train_lstm_model(
         rng.shuffle(indices)
         model.train()
         for i in range(0, len(indices), batch_size):
+            if deadline_monotonic is not None:
+                import time
+
+                if time.monotonic() >= deadline_monotonic:
+                    raise TimeoutError("LSTM training exceeded its time budget.")
             batch_indices = indices[i : i + batch_size]
             batch_x = X_t[batch_indices]
             batch_y = y_t[batch_indices]
@@ -122,15 +152,23 @@ def generate_deep_learning_signals(
     output["Signal_DL"] = 0
     prices = _close_values(output)
 
+    sequences = np.lib.stride_tricks.sliding_window_view(prices, sequence_length)
+    normalized = (sequences - mean_p) / std_p
+    inputs = torch.from_numpy(normalized.copy()).float().unsqueeze(-1)
     model.eval()
-    for decision_index in range(sequence_length - 1, len(output) - 1):
-        seq = prices[decision_index - sequence_length + 1 : decision_index + 1]
-        seq_norm = (seq - mean_p) / std_p
-        X_seq = torch.from_numpy(seq_norm).float().unsqueeze(0).unsqueeze(-1)
+    with torch.no_grad():
+        predicted = np.concatenate(
+            [
+                model(inputs[start : start + MAX_BATCH_SIZE]).squeeze(-1).cpu().numpy()
+                for start in range(0, len(inputs), MAX_BATCH_SIZE)
+            ]
+        )
 
-        with torch.no_grad():
-            pred_norm = model(X_seq).item()
-        pred_price = (pred_norm * std_p) + mean_p
+    for offset, pred_norm in enumerate(predicted):
+        decision_index = offset + sequence_length - 1
+        pred_price = (float(pred_norm) * std_p) + mean_p
+        if not np.isfinite(pred_price) or pred_price <= 0:
+            raise ValueError("Model produced an invalid predicted price.")
         current_price = float(prices[decision_index])
 
         if pred_price > current_price * (1 + threshold):
@@ -160,6 +198,8 @@ def forecast_future_prices(
     last_date = pd.to_datetime(df.index[-1])
     previous_price = float(full_prices[-1])
 
+    if not 0 <= forecast_days <= 10:
+        raise ValueError("Forecast days must be between 0 and 10.")
     model.eval()
     for _ in range(forecast_days):
         if len(full_prices) < sequence_length:
@@ -172,6 +212,8 @@ def forecast_future_prices(
         with torch.no_grad():
             pred_norm = model(X_seq).item()
         pred_price = float((pred_norm * std_p) + mean_p)
+        if not np.isfinite(pred_price) or pred_price <= 0:
+            raise ValueError("Model produced an invalid forecast price.")
         last_date = last_date + pd.offsets.BDay(1)
 
         if pred_price > previous_price * (1 + threshold):

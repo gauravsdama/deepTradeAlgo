@@ -54,7 +54,6 @@ function renderEvents(events) {
 }
 
 function renderAnalysis(analysis, activeButton) {
-  document.querySelector("#analysis-source").textContent = analysis.source;
   document.querySelector("#ticker").textContent = analysis.ticker;
   document.querySelector("#analysis-title").textContent = analysis.title;
   document.querySelector("#analysis-prompt").textContent = analysis.prompt;
@@ -85,11 +84,11 @@ function renderAnalysis(analysis, activeButton) {
   renderEvents(analysis.events);
 }
 
-function buildButton(analysis, index) {
+function buildButton(analysis) {
   const button = document.createElement("button");
   button.type = "button";
   button.className = "analysis-button";
-  button.innerHTML = `<span>${String(index + 1).padStart(2, "0")} · ${analysis.ticker}</span><strong>${analysis.title}</strong><small>${analysis.prompt}</small>`;
+  button.innerHTML = `<span>${analysis.ticker}</span><strong>${analysis.title}</strong>`;
   button.addEventListener("click", () => renderAnalysis(analysis, button));
   return button;
 }

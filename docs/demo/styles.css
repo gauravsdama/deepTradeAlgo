@@ -91,10 +91,10 @@ h1 {
   max-width: 760px;
   margin-bottom: 0;
   font-family: "Avenir Next Condensed", "Arial Narrow", sans-serif;
-  font-size: clamp(3.2rem, 7.5vw, 7rem);
+  font-size: clamp(2.4rem, 5vw, 4rem);
   font-weight: 750;
-  letter-spacing: -0.05em;
-  line-height: 0.87;
+  letter-spacing: 0;
+  line-height: 1;
 }
 
 .hero-copy {

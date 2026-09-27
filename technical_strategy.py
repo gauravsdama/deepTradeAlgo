@@ -21,17 +21,22 @@ def compute_indicators(df: pd.DataFrame) -> pd.DataFrame:
     output = df.copy()
     close = _close_series(output)
 
-    output["MA50"] = close.rolling(window=50, min_periods=5).mean()
-    output["MA200"] = close.rolling(window=200, min_periods=20).mean()
+    # The labels are literal: a MA50/MA200 value is not emitted until the full
+    # 50/200 observed closes exist. Partial windows made early values look like
+    # established long-window averages.
+    output["MA50"] = close.rolling(window=50, min_periods=50).mean()
+    output["MA200"] = close.rolling(window=200, min_periods=200).mean()
 
     delta = close.diff()
     gain = delta.clip(lower=0)
     loss = -delta.clip(upper=0)
     avg_gain = gain.ewm(alpha=1 / 14, min_periods=14, adjust=False).mean()
     avg_loss = loss.ewm(alpha=1 / 14, min_periods=14, adjust=False).mean()
-    rs = avg_gain / avg_loss.replace(0, np.nan)
-    output["RSI"] = 100 - (100 / (1 + rs))
-    output["RSI"] = output["RSI"].replace([np.inf, -np.inf], np.nan).fillna(50)
+    rs = avg_gain / avg_loss.where(avg_loss != 0)
+    rsi = 100 - (100 / (1 + rs))
+    rsi = rsi.mask((avg_loss == 0) & (avg_gain > 0), 100.0)
+    rsi = rsi.mask((avg_loss == 0) & (avg_gain == 0), 50.0)
+    output["RSI"] = rsi.replace([np.inf, -np.inf], np.nan).fillna(50.0)
 
     ema12 = close.ewm(span=12, adjust=False).mean()
     ema26 = close.ewm(span=26, adjust=False).mean()

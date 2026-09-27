@@ -11,8 +11,12 @@ from contextlib import redirect_stderr, redirect_stdout
 import numpy as np
 import pandas as pd
 import yfinance as yf
+from curl_cffi.requests.exceptions import RequestException
+from yfinance.exceptions import YFException
 
 PRICE_COLUMNS = ["Open", "High", "Low", "Close", "Adj Close", "Volume"]
+DOWNLOAD_TIMEOUT_SECONDS = 10
+MAX_HISTORY_DAYS = 365 * 5 + 2
 
 
 def _stable_seed(parts: Iterable[str]) -> int:
@@ -41,6 +45,8 @@ def _normalize_market_frame(df: pd.DataFrame) -> pd.DataFrame:
     df = _flatten_yfinance_columns(df).copy()
     if df.empty:
         return df
+    if "Close" not in df.columns:
+        raise ValueError("Market data is missing the Close column.")
 
     if "Adj Close" not in df.columns and "Close" in df.columns:
         df["Adj Close"] = df["Close"]
@@ -55,13 +61,49 @@ def _normalize_market_frame(df: pd.DataFrame) -> pd.DataFrame:
 
     if "Volume" not in df.columns:
         df["Volume"] = 0
-    df["Volume"] = pd.to_numeric(df["Volume"], errors="coerce").fillna(0)
+    else:
+        df["Volume"] = pd.to_numeric(df["Volume"], errors="coerce")
 
-    df = df.dropna(subset=["Close"]).sort_index()
+    if not isinstance(df.index, pd.DatetimeIndex):
+        raise ValueError("Market data must use a DatetimeIndex.")
     if df.index.tz is not None:
         df.index = df.index.tz_convert(None)
 
+    if not df.index.is_unique:
+        raise ValueError("Market data contains duplicate timestamps.")
+    if not df.index.is_monotonic_increasing:
+        raise ValueError("Market data timestamps must be increasing.")
+    price_values = df[["Open", "High", "Low", "Close", "Adj Close"]].to_numpy(dtype=float)
+    if not np.isfinite(price_values).all() or (price_values <= 0).any():
+        raise ValueError("Market prices must be finite and positive.")
+    if (df["High"] < df[["Open", "Close", "Low"]].max(axis=1)).any():
+        raise ValueError("Market data contains an invalid high price.")
+    if (df["Low"] > df[["Open", "Close", "High"]].min(axis=1)).any():
+        raise ValueError("Market data contains an invalid low price.")
+    volume_values = df["Volume"].to_numpy(dtype=float)
+    if not np.isfinite(volume_values).all() or (volume_values < 0).any():
+        raise ValueError("Market volume must be finite and non-negative.")
+
     return df[PRICE_COLUMNS]
+
+
+def _download_market_data(symbol: str, start_date: str, end_date: str, interval: str):
+    """Keep upstream availability errors separate from local normalization errors."""
+
+    try:
+        with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+            return yf.download(
+                symbol,
+                start=start_date,
+                end=end_date,
+                interval=interval,
+                auto_adjust=True,
+                progress=False,
+                threads=False,
+                timeout=DOWNLOAD_TIMEOUT_SECONDS,
+            )
+    except (RequestException, YFException) as exc:
+        raise RuntimeError(f"Market data provider request failed for {symbol}.") from exc
 
 
 def generate_demo_data(symbol: str, start_date: str, end_date: str) -> pd.DataFrame:
@@ -72,7 +114,7 @@ def generate_demo_data(symbol: str, start_date: str, end_date: str) -> pd.DataFr
     if pd.isna(start) or pd.isna(end):
         raise ValueError("Dates must be parseable by pandas.")
     if end <= start:
-        end = start + pd.Timedelta(days=365)
+        raise ValueError("End date must be after start date.")
 
     dates = pd.bdate_range(start=start, end=end)
     if len(dates) < 2:
@@ -122,33 +164,35 @@ def fetch_historical_data(
     if not clean_symbol:
         raise ValueError("Ticker symbol is required.")
 
+    if interval != "1d":
+        raise ValueError("Only daily market data is supported.")
+    start = pd.to_datetime(start_date, errors="raise")
+    end = pd.to_datetime(end_date, errors="raise")
+    if end <= start:
+        raise ValueError("End date must be after start date.")
+    if (end - start).days > MAX_HISTORY_DAYS:
+        raise ValueError("Choose a date range of five years or less.")
+
     allow_demo_fallback = os.getenv("DEEPTRADE_DEMO_FALLBACK", "1") != "0"
     try:
-        with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
-            df = yf.download(
-                clean_symbol,
-                start=start_date,
-                end=end_date,
-                interval=interval,
-                auto_adjust=False,
-                progress=False,
-                threads=False,
-            )
-        df = _normalize_market_frame(df)
-        if not df.empty:
-            df.attrs["source"] = "yfinance"
-            df.attrs["source_note"] = "Live/delayed Yahoo Finance market data."
-            return df
+        raw = _download_market_data(clean_symbol, start_date, end_date, interval)
+    except RuntimeError:
         if not allow_demo_fallback:
-            raise RuntimeError(f"No rows returned for {clean_symbol}.")
-    except Exception as exc:  # yfinance can fail for rate limits or network issues.
-        if not allow_demo_fallback:
-            raise RuntimeError(f"Could not fetch data for {clean_symbol}: {exc}") from exc
+            raise
+        return generate_demo_data(clean_symbol, start_date, end_date)
+
+    # Normalization intentionally sits outside the provider exception handler:
+    # schema/data/programming errors must be visible, never replaced by fiction.
+    df = _normalize_market_frame(raw)
+    if not df.empty:
+        df.attrs["source"] = "yfinance"
+        df.attrs["source_note"] = "Live/delayed split-adjusted Yahoo Finance market data."
+        return df
 
     if allow_demo_fallback:
         return generate_demo_data(clean_symbol, start_date, end_date)
 
-    return pd.DataFrame(columns=PRICE_COLUMNS)
+    raise RuntimeError(f"No rows returned for {clean_symbol}.")
 
 
 def backdate_one_day(df: pd.DataFrame):

@@ -1,8 +1,7 @@
 import argparse
 
+from analysis_pipeline import build_strategy_analysis
 from data_handler import backdate_one_day, fetch_historical_data
-from deep_learning import generate_deep_learning_signals, prepare_sequences, train_lstm_model
-from technical_strategy import compute_indicators, generate_technical_signals
 from trading_simulator import backtest, buy_and_hold_value, simulate_paper_trade
 
 
@@ -44,37 +43,10 @@ def main():
         print("No data fetched. Please check symbol or date range.")
         return
 
-    # If we do deep learning, we need to train the model
-    if strategy == "deep_learning":
-        print("Preparing data for LSTM training...")
-        sequence_length = 60
-        if len(df) < 140:
-            raise ValueError("The LSTM demo needs at least 140 market rows.")
-        train_end = int(0.7 * len(df))
-        X_seq, y_seq, mean_p, std_p = prepare_sequences(
-            df, sequence_length=sequence_length, fit_rows=train_end
-        )
-        training_sequence_count = train_end - sequence_length
-        X_train = X_seq[:training_sequence_count]
-        y_train = y_seq[:training_sequence_count]
-
-        print("Training LSTM model...")
-        model = train_lstm_model(X_train, y_train, epochs=3, hidden_size=32)
-
-        print("Generating deep learning signals...")
-        df_dl = generate_deep_learning_signals(
-            df, model, sequence_length=sequence_length, mean_p=mean_p, std_p=std_p
-        ).iloc[train_end - 1 :]
-        signals = df_dl["Signal_DL"]
-        prices = df_dl["Open"]
-
-    else:
-        # Use technical strategy
-        print("Computing technical indicators and signals...")
-        df_ta = compute_indicators(df)
-        df_ta = generate_technical_signals(df_ta)
-        signals = df_ta["Signal_TA"]
-        prices = df_ta["Open"]
+    print("Preparing strategy signals...")
+    analysis = build_strategy_analysis(df, strategy)
+    signals = analysis.observed[analysis.signal_column]
+    prices = analysis.observed["Open"]
 
     if mode == "backtest":
         # Perform backtest on historical data
@@ -103,45 +75,30 @@ def main():
         # Simulate paper trade
         print("Simulating 'paper trade' using yesterday's signal and today's outcome...")
 
-        # Let's assume the last 2 days of data represent "yesterday" and "today"
-        # Alternatively, you could fetch data up to 'today' in real-time and then do the same logic
         try:
             yesterday, today = backdate_one_day(df)
         except ValueError as e:
             print("Error in backdate data:", e)
             return
 
-        # We need the signal for 'yesterday' if available
-        # If deep learning:
-        if strategy == "deep_learning":
-            # df_dl might not be the exact same index shape because of the 60-day lead
-            # We'll try to get the signal for 'yesterday's date from signals
-            yest_idx = signals.index[-2]
-            strategy_signal = signals.loc[yest_idx]
-        else:
-            # technical
-            yest_idx = signals.index[-2]
-            strategy_signal = signals.loc[yest_idx]
+        decision_index = yesterday.name
+        if decision_index not in signals.index:
+            raise ValueError("No strategy signal exists for the prior market row.")
+        strategy_signal = signals.loc[decision_index]
 
-        # Yesterday close price
-        yesterday_price = yesterday["Close"]
-        # Today close price
-        today_price = today["Close"]
+        today_open = today["Open"]
+        today_close = today["Close"]
 
-        final_cash, profit = simulate_paper_trade(strategy_signal, yesterday_price, today_price)
-        if hasattr(yesterday_price, "iloc"):
-            yesterday_price = float(yesterday_price.iloc[0])
-        else:
-            yesterday_price = float(yesterday_price)
-        if hasattr(today_price, "iloc"):
-            today_price = float(today_price.iloc[0])
-        else:
-            today_price = float(today_price)
+        final_cash, profit = simulate_paper_trade(strategy_signal, today_open, today_close)
+        today_open = float(today_open.iloc[0]) if hasattr(today_open, "iloc") else float(today_open)
+        today_close = (
+            float(today_close.iloc[0]) if hasattr(today_close, "iloc") else float(today_close)
+        )
 
         print(
             f"Yesterday's Signal = {strategy_signal}, "
-            f"Yesterday Price = {yesterday_price:.2f}, "
-            f"Today Price = {today_price:.2f}"
+            f"Today's Open = {today_open:.2f}, "
+            f"Today's Close = {today_close:.2f}"
         )
         print(f"Paper Trade result: Final Cash = ${final_cash:.2f}, Profit = ${profit:.2f}")
 

@@ -4,12 +4,15 @@ from __future__ import annotations
 
 import datetime as dt
 import io
+import os
 from contextlib import redirect_stderr, redirect_stdout
 
 import pandas as pd
 import yfinance as yf
+from curl_cffi.requests.exceptions import RequestException
+from yfinance.exceptions import YFException
 
-from data_handler import generate_demo_data
+from data_handler import DOWNLOAD_TIMEOUT_SECONDS, _normalize_market_frame, generate_demo_data
 
 
 def _as_float(value):
@@ -45,11 +48,19 @@ def fetch_realtime_data(ticker: str):
     try:
         stock = yf.Ticker(symbol)
         with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
-            data = stock.history(period="5d", auto_adjust=False)
-        if not data.empty:
-            return _quote_from_row(symbol, data.iloc[-1], "yfinance")
-    except Exception:
-        pass
+            data = stock.history(period="5d", auto_adjust=True, timeout=DOWNLOAD_TIMEOUT_SECONDS)
+    except (RequestException, YFException) as exc:
+        if os.getenv("DEEPTRADE_DEMO_FALLBACK", "1") == "0":
+            raise RuntimeError(f"Market quote provider request failed for {symbol}.") from exc
+        data = pd.DataFrame()
+
+    # Normalization happens outside the provider handler so malformed data is
+    # surfaced rather than silently replaced with a plausible-looking quote.
+    data = _normalize_market_frame(data)
+    if not data.empty:
+        return _quote_from_row(symbol, data.iloc[-1], "yfinance")
+    if os.getenv("DEEPTRADE_DEMO_FALLBACK", "1") == "0":
+        raise RuntimeError(f"No quote rows returned for {symbol}.")
 
     end = dt.date.today()
     start = end - dt.timedelta(days=30)

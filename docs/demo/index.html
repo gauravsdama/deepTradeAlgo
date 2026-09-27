@@ -3,8 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Five saved DeepTradeAlgo technical-analysis snapshots.">
-  <title>DeepTradeAlgo · Five saved analyses</title>
+  <meta name="description" content="DeepTradeAlgo technical-analysis demo.">
+  <title>DeepTradeAlgo</title>
+  <link rel="icon" href="data:,">
   <link rel="stylesheet" href="./styles.css">
   <script src="./app.js" defer></script>
 </head>
@@ -15,22 +16,20 @@
         <span class="brand-mark" aria-hidden="true">DTA</span>
         <span>DeepTradeAlgo</span>
       </a>
-      <span class="mode">Saved analysis deck</span>
     </header>
 
     <section class="hero">
       <div>
-        <p class="kicker">Five fixed paths · one technical rule set</p>
-        <h1>Read the signal, then challenge it.</h1>
+        <h1>DeepTradeAlgo</h1>
       </div>
-      <p class="hero-copy">Each snapshot uses deterministic generated data, next-session execution, fees, slippage, and the same buy-and-hold comparison. Choose an analysis to inspect the result.</p>
+      <p class="hero-copy">Choose a ticker to inspect its price path, latest signal, strategy return, and recent buy or sell events.</p>
     </section>
 
     <section class="analysis-shell" aria-label="Five saved analyses">
-      <nav class="analysis-rail" aria-label="Saved analysis prompts">
+      <nav class="analysis-rail" aria-label="Ticker selection">
         <div class="rail-heading">
-          <span>Analysis queue</span>
-          <strong>5 saved</strong>
+          <span>Tickers</span>
+          <strong>5 examples</strong>
         </div>
         <div id="analysis-list">
           <span class="loading">Loading analyses…</span>
@@ -40,12 +39,11 @@
       <article class="analysis-panel" aria-live="polite">
         <header class="analysis-header">
           <div>
-            <span id="analysis-source" class="data-source">—</span>
             <h2><span id="ticker">—</span> <small id="analysis-title">—</small></h2>
             <p id="analysis-prompt">Loading saved analysis…</p>
           </div>
           <div id="signal" class="signal hold">
-            <span>Latest signal</span>
+            <span>Signal</span>
             <strong>—</strong>
           </div>
         </header>
@@ -69,8 +67,7 @@
 
         <section class="event-tape" aria-labelledby="event-heading">
           <div>
-            <span>Recent non-hold signals</span>
-            <h3 id="event-heading">Event tape</h3>
+            <h3 id="event-heading">Recent signals</h3>
           </div>
           <ol id="event-list"></ol>
         </section>
@@ -78,10 +75,9 @@
     </section>
 
     <section class="method">
-      <h2>What this page does—and does not do</h2>
-      <p>These are precomputed technical-strategy snapshots, not live quotes. GitHub Pages does not run Flask or train PyTorch models. Run the repository locally for custom tickers and the chronological LSTM demo.</p>
-      <p>Educational simulation only. Generated data is not market history, and historical-style results do not predict future performance.</p>
-      <a href="https://github.com/gauravsdama/deepTradeAlgo">View source and local setup</a>
+      <h2>Demo data</h2>
+      <p>The five examples are precomputed from generated price paths. Run the repository locally to analyze a custom ticker or use the LSTM forecast.</p>
+      <a href="https://github.com/gauravsdama/deepTradeAlgo">View source</a>
     </section>
   </main>
 </body>

@@ -8,15 +8,9 @@ import plotly.graph_objs as go
 from flask import Flask, jsonify, render_template, request
 from plotly.offline import plot
 
-from data_handler import fetch_historical_data
-from deep_learning import (
-    forecast_future_prices,
-    generate_deep_learning_signals,
-    prepare_sequences,
-    train_lstm_model,
-)
+from analysis_pipeline import MAX_FORECAST_DAYS, build_strategy_analysis
+from data_handler import MAX_HISTORY_DAYS, fetch_historical_data
 from realtime_data import fetch_realtime_data
-from technical_strategy import compute_indicators, generate_technical_signals
 from trading_simulator import backtest, buy_and_hold_value
 
 app = Flask(__name__)
@@ -30,8 +24,6 @@ SIGNAL_LABELS = {
     0: ("Hold", "neutral"),
     -1: ("Sell", "negative"),
 }
-MAX_HISTORY_DAYS = 365 * 5 + 2
-MAX_FORECAST_DAYS = 10
 FEE_BPS = 5.0
 SLIPPAGE_BPS = 5.0
 
@@ -235,49 +227,11 @@ def run_analysis(
     source = df.attrs.get("source", "unknown")
     source_note = df.attrs.get("source_note", "Market data source was not provided.")
 
-    if strategy == "deep_learning":
-        sequence_length = 60
-        if len(df) < 140:
-            raise ValueError("The LSTM demo needs at least 140 market rows.")
-        train_end = int(len(df) * 0.7)
-        X_seq, y_seq, mean_p, std_p = prepare_sequences(
-            df,
-            sequence_length=sequence_length,
-            fit_rows=train_end,
-        )
-        training_sequence_count = train_end - sequence_length
-        model = train_lstm_model(
-            X_seq[:training_sequence_count],
-            y_seq[:training_sequence_count],
-            epochs=3,
-            hidden_size=32,
-        )
-        full_history = generate_deep_learning_signals(
-            df,
-            model,
-            sequence_length=sequence_length,
-            mean_p=mean_p,
-            std_p=std_p,
-        )
-        history = full_history.iloc[train_end - 1 :].copy()
-        future = forecast_future_prices(
-            full_history,
-            model,
-            mean_p,
-            std_p,
-            forecast_days=forecast_days,
-            sequence_length=sequence_length,
-            threshold=0.01,
-        )
-        if not future.empty:
-            future = future.rename(columns={"Signal_Future": "Signal_DL"})
-            future["Signal_DL"] = future["Signal_DL"].astype(int)
-        combined = pd.concat([history, future], axis=0, sort=False)
-        signal_col = "Signal_DL"
-    else:
-        history = generate_technical_signals(compute_indicators(df))
-        combined = history
-        signal_col = "Signal_TA"
+    analysis = build_strategy_analysis(df, strategy, forecast_days=forecast_days)
+    history = analysis.observed
+    future = analysis.forecast
+    signal_col = analysis.signal_column
+    combined = pd.concat([history, future], axis=0, sort=False)
 
     if history.empty:
         raise ValueError("Not enough clean rows were available after indicator calculation.")
@@ -298,8 +252,13 @@ def run_analysis(
     )
     benchmark_return = ((benchmark_value - 10000.0) / 10000.0) * 100
 
-    latest_signal = int(combined[signal_col].dropna().iloc[-1])
+    latest_signal = int(history[signal_col].iloc[-1])
     signal_label, signal_tone = _signal(latest_signal)
+    forecast_signal = None
+    forecast_signal_label = None
+    if not future.empty:
+        forecast_signal = int(future["Signal_Future"].iloc[-1])
+        forecast_signal_label = _signal(forecast_signal)[0]
     last_close = _as_float(history["Close"].iloc[-1])
     first_close = _as_float(history["Close"].iloc[0])
     price_change = ((last_close - first_close) / first_close) * 100 if first_close else 0
@@ -316,6 +275,8 @@ def run_analysis(
         "latest_signal": latest_signal,
         "signal_label": signal_label,
         "signal_tone": signal_tone,
+        "forecast_signal": forecast_signal,
+        "forecast_signal_label": forecast_signal_label,
         "last_close": _fmt_money(last_close),
         "price_change": _fmt_pct(price_change),
         "final_value": _fmt_money(final_value),
@@ -396,6 +357,8 @@ def predict():
             "strategy": strategy,
             "signal": result["latest_signal"],
             "recommendation": result["signal_label"],
+            "forecast_signal": result["forecast_signal"],
+            "forecast_recommendation": result["forecast_signal_label"],
             "last_close": result["last_close"],
             "total_return": result["total_return"],
             "benchmark_return": result["benchmark_return"],

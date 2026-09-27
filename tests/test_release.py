@@ -4,6 +4,7 @@ import json
 import re
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -28,6 +29,19 @@ def test_private_runtime_files_are_not_tracked():
 
     assert not any(path == ".env" or path.startswith(".venv/") for path in relative)
     assert not any(path.endswith((".db", ".sqlite")) for path in relative)
+
+
+def test_requirements_match_runtime_project_dependencies():
+    project = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]
+    requirements = {
+        line.strip()
+        for line in (ROOT / "requirements.txt").read_text().splitlines()
+        if line.strip() and not line.startswith("#")
+    }
+
+    assert {requirement.lower() for requirement in requirements} == {
+        dependency.lower() for dependency in project["dependencies"]
+    }
 
 
 def test_tracked_text_has_no_common_secret_shape_or_workspace_path():
