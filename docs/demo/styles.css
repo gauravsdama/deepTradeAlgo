@@ -163,7 +163,10 @@ h1 {
 }
 .analysis-button.active { box-shadow: inset 4px 0 0 var(--cyan); }
 
-.analysis-panel { padding: 30px; }
+.analysis-panel {
+  min-width: 0;
+  padding: 30px;
+}
 .analysis-header {
   align-items: flex-start;
   justify-content: space-between;
@@ -198,9 +201,10 @@ h1 {
 }
 .signal span { display: block; color: var(--muted); font-size: 0.76rem; }
 .signal strong { display: block; margin-top: 5px; font-size: 1.7rem; }
+.signal small { display: block; margin-top: 5px; color: var(--muted); }
 .signal.buy strong { color: var(--green); }
 .signal.sell strong { color: var(--red); }
-.signal.hold strong { color: var(--amber); }
+.signal.no-action strong { color: var(--amber); }
 
 .chart-wrap {
   margin-top: 24px;
@@ -270,7 +274,7 @@ h1 {
 
 @media (max-width: 900px) {
   .hero { align-items: flex-start; flex-direction: column; }
-  .analysis-shell { grid-template-columns: 1fr; }
+  .analysis-shell { grid-template-columns: minmax(0, 1fr); }
   .analysis-rail { border-right: 0; border-bottom: 1px solid var(--line); }
   #analysis-list { grid-template-columns: repeat(5, minmax(180px, 1fr)); overflow-x: auto; }
   .analysis-button { min-height: 124px; }

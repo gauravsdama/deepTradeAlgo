@@ -67,9 +67,11 @@ function renderAnalysis(analysis, activeButton) {
   document.querySelector("#period-end").textContent = analysis.period.end;
   document.querySelector("#price-line").setAttribute("points", chartPoints(analysis.series));
 
+  const latestAction = analysis.latest_action;
   const signal = document.querySelector("#signal");
-  signal.className = `signal ${analysis.latest_signal.toLowerCase()}`;
-  signal.querySelector("strong").textContent = analysis.latest_signal;
+  signal.className = `signal ${latestAction.signal.toLowerCase().replace(" ", "-")}`;
+  signal.querySelector("strong").textContent = latestAction.signal;
+  document.querySelector("#signal-date").textContent = latestAction.date ?? "No action in period";
   document.querySelector("#chart-description").textContent =
     `${analysis.ticker} deterministic generated closing-price path from ${analysis.period.start} to ${analysis.period.end}.`;
 
@@ -88,7 +90,7 @@ function buildButton(analysis) {
   const button = document.createElement("button");
   button.type = "button";
   button.className = "analysis-button";
-  button.innerHTML = `<span>${analysis.ticker}</span><strong>${analysis.title}</strong>`;
+  button.innerHTML = `<span>${analysis.ticker}</span><strong>${analysis.title}</strong><small>${analysis.latest_action.signal} · ${analysis.latest_action.date ?? "No action"}</small>`;
   button.addEventListener("click", () => renderAnalysis(analysis, button));
   return button;
 }

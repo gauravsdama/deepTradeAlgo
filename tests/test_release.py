@@ -83,6 +83,11 @@ def test_static_analysis_deck_is_current_and_bounded():
         "TSLA",
     }
     assert all(len(analysis["series"]) <= 64 for analysis in payload["analyses"])
+    assert all(
+        analysis["latest_action"]["signal"] in {"Buy", "Sell"}
+        for analysis in payload["analyses"]
+    )
+    assert all(analysis["latest_action"]["date"] for analysis in payload["analyses"])
 
 
 def test_static_demo_has_no_runtime_third_party_assets():

@@ -76,6 +76,19 @@ def _signal_events(history) -> list[dict]:
     ]
 
 
+def _latest_action(history) -> dict:
+    actions = history.loc[history["Signal_TA"] != 0]
+    if actions.empty:
+        return {"signal": "No action", "date": None}
+
+    date = actions.index[-1]
+    signal = int(actions["Signal_TA"].iloc[-1])
+    return {
+        "signal": SIGNAL_LABELS[signal],
+        "date": date.date().isoformat(),
+    }
+
+
 def build_snapshot(scenario: dict) -> dict:
     from data_handler import generate_demo_data
     from technical_strategy import compute_indicators, generate_technical_signals
@@ -98,7 +111,7 @@ def build_snapshot(scenario: dict) -> dict:
     )
     first_close = float(history["Close"].iloc[0])
     last_close = float(history["Close"].iloc[-1])
-    latest_signal = int(history["Signal_TA"].iloc[-1])
+    latest_action = _latest_action(history)
 
     return {
         **scenario,
@@ -108,7 +121,7 @@ def build_snapshot(scenario: dict) -> dict:
             "end": history.index[-1].date().isoformat(),
             "rows": len(history),
         },
-        "latest_signal": SIGNAL_LABELS[latest_signal],
+        "latest_action": latest_action,
         "last_close": round(last_close, 2),
         "price_change_pct": round(((last_close - first_close) / first_close) * 100, 2),
         "strategy_return_pct": _return_pct(final_value),
@@ -122,7 +135,7 @@ def build_snapshot(scenario: dict) -> dict:
 
 def export_payload() -> dict:
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "generated_from": {
             "data": "Deterministic generated demo data",
             "strategy": "MA50/MA200, RSI, and MACD technical signals",

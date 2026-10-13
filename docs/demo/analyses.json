@@ -31,7 +31,10 @@
         }
       ],
       "last_close": 161.19,
-      "latest_signal": "Hold",
+      "latest_action": {
+        "date": "2024-12-16",
+        "signal": "Buy"
+      },
       "period": {
         "end": "2025-01-01",
         "rows": 324,
@@ -334,7 +337,10 @@
         }
       ],
       "last_close": 301.8,
-      "latest_signal": "Hold",
+      "latest_action": {
+        "date": "2024-12-19",
+        "signal": "Sell"
+      },
       "period": {
         "end": "2025-01-01",
         "rows": 324,
@@ -637,7 +643,10 @@
         }
       ],
       "last_close": 215.72,
-      "latest_signal": "Hold",
+      "latest_action": {
+        "date": "2024-12-19",
+        "signal": "Sell"
+      },
       "period": {
         "end": "2025-01-01",
         "rows": 324,
@@ -940,7 +949,10 @@
         }
       ],
       "last_close": 472.63,
-      "latest_signal": "Hold",
+      "latest_action": {
+        "date": "2024-12-24",
+        "signal": "Sell"
+      },
       "period": {
         "end": "2025-01-01",
         "rows": 324,
@@ -1243,7 +1255,10 @@
         }
       ],
       "last_close": 173.8,
-      "latest_signal": "Hold",
+      "latest_action": {
+        "date": "2024-12-05",
+        "signal": "Sell"
+      },
       "period": {
         "end": "2025-01-01",
         "rows": 324,
@@ -1528,5 +1543,5 @@
     "slippage_bps_per_side": 5.0,
     "strategy": "MA50/MA200, RSI, and MACD technical signals"
   },
-  "schema_version": 1
+  "schema_version": 2
 }
