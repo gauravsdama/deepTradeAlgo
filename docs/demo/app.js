@@ -55,8 +55,6 @@ function renderEvents(events) {
 
 function renderAnalysis(analysis, activeButton) {
   document.querySelector("#ticker").textContent = analysis.ticker;
-  document.querySelector("#analysis-title").textContent = analysis.title;
-  document.querySelector("#analysis-prompt").textContent = analysis.prompt;
   document.querySelector("#last-close").textContent = usd.format(analysis.last_close);
   document.querySelector("#price-change").textContent = `${percent(analysis.price_change_pct)} across the saved period`;
   document.querySelector("#strategy-return").textContent = percent(analysis.strategy_return_pct);
@@ -90,7 +88,7 @@ function buildButton(analysis) {
   const button = document.createElement("button");
   button.type = "button";
   button.className = "analysis-button";
-  button.innerHTML = `<span>${analysis.ticker}</span><strong>${analysis.title}</strong><small>${analysis.latest_action.signal} · ${analysis.latest_action.date ?? "No action"}</small>`;
+  button.innerHTML = `<strong>${analysis.ticker}</strong><small>${analysis.latest_action.signal} · ${analysis.latest_action.date ?? "No action"}</small>`;
   button.addEventListener("click", () => renderAnalysis(analysis, button));
   return button;
 }

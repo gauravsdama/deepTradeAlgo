@@ -21,31 +21,11 @@ FEE_BPS = 5.0
 SLIPPAGE_BPS = 5.0
 SIGNAL_LABELS = {1: "Buy", 0: "Hold", -1: "Sell"}
 SCENARIOS = [
-    {
-        "ticker": "AAPL",
-        "title": "Trend check",
-        "prompt": "Is the rule set participating in this price path?",
-    },
-    {
-        "ticker": "MSFT",
-        "title": "Crossover scan",
-        "prompt": "Where do moving-average changes create entries or exits?",
-    },
-    {
-        "ticker": "NVDA",
-        "title": "Momentum stress",
-        "prompt": "How does the strategy behave on a more volatile path?",
-    },
-    {
-        "ticker": "GOOGL",
-        "title": "Benchmark review",
-        "prompt": "Does the simulated strategy beat buy-and-hold after costs?",
-    },
-    {
-        "ticker": "TSLA",
-        "title": "Signal density",
-        "prompt": "How often does the rule set change its position?",
-    },
+    {"ticker": "AAPL"},
+    {"ticker": "MSFT"},
+    {"ticker": "NVDA"},
+    {"ticker": "GOOGL"},
+    {"ticker": "TSLA"},
 ]
 
 

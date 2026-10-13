@@ -41,7 +41,6 @@
         "start": "2023-10-06"
       },
       "price_change_pct": -14.81,
-      "prompt": "Is the rule set participating in this price path?",
       "sell_count": 19,
       "series": [
         {
@@ -303,8 +302,7 @@
       ],
       "source": "Deterministic generated demo data",
       "strategy_return_pct": -12.5,
-      "ticker": "AAPL",
-      "title": "Trend check"
+      "ticker": "AAPL"
     },
     {
       "benchmark_return_pct": 97.83,
@@ -347,7 +345,6 @@
         "start": "2023-10-06"
       },
       "price_change_pct": 101.28,
-      "prompt": "Where do moving-average changes create entries or exits?",
       "sell_count": 30,
       "series": [
         {
@@ -609,8 +606,7 @@
       ],
       "source": "Deterministic generated demo data",
       "strategy_return_pct": 25.35,
-      "ticker": "MSFT",
-      "title": "Crossover scan"
+      "ticker": "MSFT"
     },
     {
       "benchmark_return_pct": 36.58,
@@ -653,7 +649,6 @@
         "start": "2023-10-06"
       },
       "price_change_pct": 40.04,
-      "prompt": "How does the strategy behave on a more volatile path?",
       "sell_count": 20,
       "series": [
         {
@@ -915,8 +910,7 @@
       ],
       "source": "Deterministic generated demo data",
       "strategy_return_pct": 42.6,
-      "ticker": "NVDA",
-      "title": "Momentum stress"
+      "ticker": "NVDA"
     },
     {
       "benchmark_return_pct": 59.47,
@@ -959,7 +953,6 @@
         "start": "2023-10-06"
       },
       "price_change_pct": 62.06,
-      "prompt": "Does the simulated strategy beat buy-and-hold after costs?",
       "sell_count": 20,
       "series": [
         {
@@ -1221,8 +1214,7 @@
       ],
       "source": "Deterministic generated demo data",
       "strategy_return_pct": -2.66,
-      "ticker": "GOOGL",
-      "title": "Benchmark review"
+      "ticker": "GOOGL"
     },
     {
       "benchmark_return_pct": 14.66,
@@ -1265,7 +1257,6 @@
         "start": "2023-10-06"
       },
       "price_change_pct": 21.51,
-      "prompt": "How often does the rule set change its position?",
       "sell_count": 24,
       "series": [
         {
@@ -1527,8 +1518,7 @@
       ],
       "source": "Deterministic generated demo data",
       "strategy_return_pct": -14.67,
-      "ticker": "TSLA",
-      "title": "Signal density"
+      "ticker": "TSLA"
     }
   ],
   "generated_from": {
