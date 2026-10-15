@@ -29,6 +29,11 @@ def test_private_runtime_files_are_not_tracked():
 
     assert not any(path == ".env" or path.startswith(".venv/") for path in relative)
     assert not any(path.endswith((".db", ".sqlite")) for path in relative)
+    assert not any(path.startswith(("data/", "models/", "artifacts/")) for path in relative)
+    assert not any(
+        path.endswith((".pt", ".pth", ".ckpt", ".onnx", ".pkl", ".joblib", ".parquet"))
+        for path in relative
+    )
 
 
 def test_requirements_match_runtime_project_dependencies():
@@ -84,8 +89,7 @@ def test_static_analysis_deck_is_current_and_bounded():
     }
     assert all(len(analysis["series"]) <= 64 for analysis in payload["analyses"])
     assert all(
-        analysis["latest_action"]["signal"] in {"Buy", "Sell"}
-        for analysis in payload["analyses"]
+        analysis["latest_action"]["signal"] in {"Buy", "Sell"} for analysis in payload["analyses"]
     )
     assert all(analysis["latest_action"]["date"] for analysis in payload["analyses"])
 
@@ -93,6 +97,8 @@ def test_static_analysis_deck_is_current_and_bounded():
 def test_static_demo_has_no_runtime_third_party_assets():
     html = (ROOT / "docs/demo/index.html").read_text()
 
+    assert "Generated demonstration only" in html
+    assert "fictional—not market history or actual performance" in html
     assert 'src="http' not in html
     assert 'href="http' not in html.replace(
         'href="https://github.com/gauravsdama/deepTradeAlgo"',

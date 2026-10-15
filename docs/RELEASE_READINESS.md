@@ -1,8 +1,8 @@
 # Release readiness
 
-Checkpoint: 2026-09-15
+Checkpoint: 2026-10-14
 
-Status: **local release candidate verified; publication was not performed in this task**.
+Status: **published static demo verified; maintenance update verified for publication**.
 
 ## Release boundary
 
@@ -39,13 +39,14 @@ Yahoo Finance access through `yfinance` is unofficial and can be delayed or unav
 
 ## Verification
 
-Completed successfully in this checkout on 2026-09-15:
+Completed successfully in this checkout on 2026-10-14:
 
-- `uv run ruff format --check .` — 16 files already formatted
+- `uv run ruff format --check .` — 22 files already formatted
 - `uv run ruff check .` — all checks passed
 - `uv run pytest` — 26 tests passed
 - `uv run python scripts/export_plotly_asset.py --check` — generated asset is current
 - `uv run python scripts/export_static_analyses.py --check` — five saved analyses are current
 - `uv run pip-audit` — no known vulnerabilities
-- Local browser checks — technical and chronological LSTM flows rendered complete results with the local Plotly asset; observed and forecast labels remained distinct
-- Published Pages baseline — the existing five-analysis site remains at `https://gauravsdama.github.io/deepTradeAlgo/`; this release candidate was not pushed or deployed
+- Local strategy checks — deterministic generated fixtures produced repeatable technical and chronological LSTM output; observed and forecast rows remained separate; PyTorch stayed within its two-thread CPU limit
+- Static browser checks — all five analyses, keyboard focus, 320-pixel reflow, reduced-motion mode, refresh, failure handling, and same-origin-only asset loading passed without console or network errors
+- Published Pages baseline — HTTPS is enforced at `https://gauravsdama.github.io/deepTradeAlgo/`, and every deployed asset matched the corresponding `main` asset before this maintenance update

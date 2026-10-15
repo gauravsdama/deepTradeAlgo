@@ -6,7 +6,7 @@ from trading_simulator import backtest, buy_and_hold_value, simulate_paper_trade
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Stock Trading Bot")
+    parser = argparse.ArgumentParser(description="Educational stock-signal simulator")
     parser.add_argument("--symbol", type=str, default="AAPL", help="Stock ticker symbol")
     parser.add_argument(
         "--start_date", type=str, default="2020-01-01", help="Start date (YYYY-MM-DD)"
@@ -24,7 +24,7 @@ def main():
         type=str,
         default="backtest",
         choices=["backtest", "paper"],
-        help="Choose to backtest or do paper trading (simulated).",
+        help="Choose a historical backtest or a simulated one-day paper exercise.",
     )
     args = parser.parse_args()
 
@@ -34,7 +34,9 @@ def main():
     strategy = args.strategy
     mode = args.mode
 
-    # Fetch data
+    print(
+        "Educational simulation only. Generated or delayed data may be used. Not investment advice."
+    )
     print(f"Fetching data for {symbol} from {start_date} to {end_date}...")
     df = fetch_historical_data(symbol, start_date, end_date)
     print(f"Data source: {df.attrs.get('source', 'unknown')} - {df.attrs.get('source_note', '')}")
@@ -49,7 +51,6 @@ def main():
     prices = analysis.observed["Open"]
 
     if mode == "backtest":
-        # Perform backtest on historical data
         print("Running backtest...")
         final_val, portfolio_df = backtest(
             signals,
@@ -72,7 +73,6 @@ def main():
         print("Execution: next-row open with 5 bps fees and 5 bps slippage per side.")
 
     else:
-        # Simulate paper trade
         print("Simulating 'paper trade' using yesterday's signal and today's outcome...")
 
         try:
